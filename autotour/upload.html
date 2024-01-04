@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Upload Form</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #111;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .upload-section {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #28a745;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        #gallery img {
+            width: 600px;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
+        progress {
+            width: 100%;
+            margin: 15px 0;
+            height: 20px;
+        }
+		#goToAutoTour {
+    background-color: #4CAF50; /* Green */
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    transition-duration: 0.4s;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+#goToAutoTour:hover {
+    background-color: white;
+    color: black;
+}
+
+    </style>
+</head>
+
+<body>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <div class="upload-section">
+            <label for="logo">Logo (PNG only)</label>
+            <input type="file" name="logo" accept=".png" id="logo">
+        </div>
+
+        <div class="upload-section">
+            <label for="photos">Photos</label>
+            <input type="file" name="photos[]" multiple id="photos">
+        </div>
+
+        <button type="submit">Upload</button>
+    </form>
+
+    <progress id="uploadProgress" value="0" max="100"></progress>
+    
+    <div id="logo-container">
+        <h2>Logo</h2>
+    </div>
+
+    <div id="photos-container">
+        <h2>Photos</h2>
+        <div id="gallery"></div>
+    </div>
+<button id="goToAutoTour" style="display:none;">Go to Auto Tour</button>
+
+<script>
+    $(document).ready(function() {
+        $("#uploadForm").submit(function(event) {
+            event.preventDefault();
+
+            var formData = new FormData(this);
+            var logoFile = formData.get("logo");
+
+            // Check if a logo file is selected, and if so, ensure it is a PNG file
+            if (logoFile && logoFile.size > 0 && logoFile.type !== "image/png") {
+                alert("The logo must be a PNG file.");
+                return;
+            }
+
+            $.ajax({
+                url: 'upload.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                xhr: function() {
+                    var xhr = new window.XMLHttpRequest();
+                    xhr.upload.addEventListener("progress", function(evt) {
+                        if (evt.lengthComputable) {
+                            var percentComplete = (evt.loaded / evt.total) * 100;
+                            $("#uploadProgress").val(percentComplete);
+                        }
+                    }, false);
+                    return xhr;
+                },
+                success: function(data) {
+
+                    if (data.status === 'success') {
+                        // Handle logo display
+                        if (data.logo) {
+                            const logoContainer = $('#logo-container');
+                            logoContainer.empty();  // Clear any existing content
+                            logoContainer.append('<h2>Logo</h2>');
+                            
+                            const logoImg = $('<img />', { 
+                                src: data.logo, 
+                                width: 200, 
+                                height: 200, 
+                                style: 'object-fit: cover; border-radius: 5px;', 
+                                alt: 'Logo' 
+                            });
+                            logoContainer.append(logoImg);
+                        }
+
+                        // Handle photos display
+                        if (data.thumbnails) {
+                            const gallery = $('#gallery');
+                            gallery.empty();  // Clear any existing photos
+                            data.thumbnails.forEach(thumbnail => {
+                                const img = $('<img />', { src: thumbnail, width: 600, height: 300 });
+                                gallery.append(img);
+                            });
+                        }
+
+                        $("#uploadProgress").val(0);  // Reset progress bar after upload
+                        $("#goToAutoTour").show(); // Show the button
+
+                    } else {
+                        alert(data.message);
+                    }
+                },
+        error: function(jqXHR, textStatus, errorThrown) {
+            console.log("AJAX Error!", textStatus, errorThrown);  // Log the error
+            alert('An error occurred. Please try again.');
+                }
+            });
+        });
+
+        $("#goToAutoTour").click(function() {
+            window.location.href = 'autotour.php';
+        });
+    });
+</script>
+
+</body>
+
+</html>
